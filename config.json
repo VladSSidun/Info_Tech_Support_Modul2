@@ -1,0 +1,22 @@
+{
+  "app": {
+    "name": "Project Risk AI",
+    "version": "1.0.0",
+    "language": "uk"
+  },
+  "appearance": {
+    "theme": "dark",
+    "color_scheme": "blue"
+  },
+  "paths": {
+    "log_file": "logs/app.log",
+    "model_file": "data/model.pkl",
+    "data_file": "data/sample_data.csv",
+    "reports_dir": "data/reports"
+  },
+  "model": {
+    "n_estimators": 100,
+    "random_state": 42,
+    "test_size": 0.2
+  }
+}
