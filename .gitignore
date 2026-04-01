@@ -6,3 +6,4 @@ logs/
 data/model.pkl
 data/reports/
 .env
+.pytest_cache
