@@ -173,3 +173,61 @@ def generate_report(input_data: dict, result: dict) -> str:
     logger.info(f"Звіт збережено: {filepath}")
 
     return filepath
+
+def export_json(input_data: dict, result: dict) -> str:
+    """
+    Експортує результати оцінки ризику у формат JSON.
+
+    Формує структурований JSON файл з:
+    - метаданими (версія, дата, назва програми)
+    - введеними параметрами проєкту
+    - результатами оцінки (рівень, ймовірності, важливість факторів)
+
+    Повертає шлях до збереженого файлу.
+    """
+    import json
+    from datetime import datetime
+
+    # Отримуємо папку для збереження з конфігу
+    reports_dir = get("paths.reports_dir", "data/reports")
+    os.makedirs(reports_dir, exist_ok=True)
+
+    # Унікальне ім'я файлу на основі часу
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"risk_report_{timestamp}.json"
+    filepath = os.path.join(reports_dir, filename)
+
+    # Отримуємо зрозумілі назви параметрів для JSON
+    feature_labels = {f["key"]: f["label"] for f in FEATURES}
+
+    # Формуємо структуру JSON документу
+    report_data = {
+        "metadata": {
+            "app_name": get("app.name", "Project Risk AI"),
+            "version": get("app.version", "1.1.0"),
+            "generated_at": datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
+            "format": "json"
+        },
+        "project_parameters": {
+            # Зберігаємо параметри з зрозумілими назвами
+            feature_labels.get(key, key): value
+            for key, value in input_data.items()
+        },
+        "assessment_result": {
+            "risk_level": result["risk_level"],
+            "risk_label": result["risk_label"],
+            "probabilities": result["probabilities"],
+        },
+        "feature_importance": {
+            # Назви факторів замість технічних ключів
+            feature_labels.get(key, key): round(value * 100, 2)
+            for key, value in result["feature_importance"].items()
+        }
+    }
+
+    # Записуємо у файл з відступами для читабельності
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(report_data, f, ensure_ascii=False, indent=2)
+
+    logger.info(f"JSON звіт збережено: {filepath}")
+    return filepath

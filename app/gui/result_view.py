@@ -9,7 +9,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from app.core.logger import logger
 from app.ml.features import FEATURES, RISK_COLORS
-from app.ml.report import generate_report
+from app.ml.report import generate_report, export_json
 
 
 class ResultView(ctk.CTkToplevel):
@@ -95,6 +95,17 @@ class ResultView(ctk.CTkToplevel):
             width=220,
             height=42,
             command=self._save_report
+        ).pack(side="left", padx=10)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="📋  Зберегти JSON",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            width=180,
+            height=42,
+            fg_color="#27ae60",
+            hover_color="#1e8449",
+            command=self._save_json
         ).pack(side="left", padx=10)
 
         ctk.CTkButton(
@@ -245,6 +256,22 @@ class ResultView(ctk.CTkToplevel):
             mb.showerror(
                 "Помилка",
                 f"Не вдалося зберегти звіт:\n{str(e)}"
+            )
+
+    def _save_json(self):
+        """Зберігає JSON звіт і показує повідомлення про успіх."""
+        try:
+            filepath = export_json(self.input_data, self.result)
+            logger.info(f"JSON звіт збережено користувачем: {filepath}")
+            mb.showinfo(
+                "JSON збережено",
+                f"JSON звіт успішно збережено:\n{filepath}"
+            )
+        except Exception as e:
+            logger.error(f"Помилка збереження JSON: {e}")
+            mb.showerror(
+                "Помилка",
+                f"Не вдалося зберегти JSON:\n{str(e)}"
             )
 
     def _new_assessment(self):

@@ -5,7 +5,7 @@ import pytest
 import os
 import openpyxl
 from unittest.mock import patch
-from app.ml.report import generate_report
+from app.ml.report import generate_report, export_json
 from app.ml.model import train_model, predict
 
 
@@ -119,3 +119,118 @@ class TestExceptionalConditions:
             assert os.path.exists(filepath)
         except Exception as e:
             pytest.fail(f"generate_report() кинув виняток з порожніми даними: {e}")
+
+
+
+# ============================================================
+# ТЕСТИ НОВОГО МОДУЛЯ: export_json() — Частина 4
+# ============================================================
+
+class TestJsonExport:
+    """Тести для функції export_json() — новий функціонал v1.1.0"""
+
+    # Тест нормальних умов 1
+    def test_json_file_created(self, sample_result, tmp_path, monkeypatch):
+        """export_json() має створити .json файл на диску."""
+        monkeypatch.setattr(
+            "app.ml.report.get",
+            lambda key, default=None: str(tmp_path) if key == "paths.reports_dir" else default
+        )
+        filepath = export_json(SAMPLE_INPUT, sample_result)
+        assert os.path.exists(filepath), "JSON файл не створено"
+
+    # Тест нормальних умов 2
+    def test_json_file_valid(self, sample_result, tmp_path, monkeypatch):
+        """Створений файл має бути валідним JSON."""
+        import json
+        monkeypatch.setattr(
+            "app.ml.report.get",
+            lambda key, default=None: str(tmp_path) if key == "paths.reports_dir" else default
+        )
+        filepath = export_json(SAMPLE_INPUT, sample_result)
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)  # якщо файл не валідний JSON — кине виняток
+        assert data is not None
+
+    # Тест нормальних умов 3
+    def test_json_contains_required_keys(self, sample_result, tmp_path, monkeypatch):
+        """JSON файл має містити всі обов'язкові секції."""
+        import json
+        monkeypatch.setattr(
+            "app.ml.report.get",
+            lambda key, default=None: str(tmp_path) if key == "paths.reports_dir" else default
+        )
+        filepath = export_json(SAMPLE_INPUT, sample_result)
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Перевіряємо наявність всіх ключових секцій
+        assert "metadata" in data
+        assert "project_parameters" in data
+        assert "assessment_result" in data
+        assert "feature_importance" in data
+
+    # Тест нормальних умов 4
+    def test_json_contains_risk_label(self, sample_result, tmp_path, monkeypatch):
+        """JSON має містити правильну мітку ризику."""
+        import json
+        monkeypatch.setattr(
+            "app.ml.report.get",
+            lambda key, default=None: str(tmp_path) if key == "paths.reports_dir" else default
+        )
+        filepath = export_json(SAMPLE_INPUT, sample_result)
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        assert data["assessment_result"]["risk_label"] == sample_result["risk_label"]
+
+    # Тест граничних умов 1
+    def test_json_has_correct_extension(self, sample_result, tmp_path, monkeypatch):
+        """Файл має мати розширення .json."""
+        monkeypatch.setattr(
+            "app.ml.report.get",
+            lambda key, default=None: str(tmp_path) if key == "paths.reports_dir" else default
+        )
+        filepath = export_json(SAMPLE_INPUT, sample_result)
+        assert filepath.endswith(".json")
+
+    # Тест граничних умов 2
+    def test_json_unique_filenames(self, sample_result, tmp_path, monkeypatch):
+        """Два JSON звіти підряд мають мати різні імена."""
+        import time
+        monkeypatch.setattr(
+            "app.ml.report.get",
+            lambda key, default=None: str(tmp_path) if key == "paths.reports_dir" else default
+        )
+        path1 = export_json(SAMPLE_INPUT, sample_result)
+        time.sleep(1)
+        path2 = export_json(SAMPLE_INPUT, sample_result)
+        assert path1 != path2
+
+    # Тест виняткових ситуацій 1
+    def test_json_with_empty_input(self, sample_result, tmp_path, monkeypatch):
+        """export_json() з порожніми input_data → не падає."""
+        monkeypatch.setattr(
+            "app.ml.report.get",
+            lambda key, default=None: str(tmp_path) if key == "paths.reports_dir" else default
+        )
+        try:
+            filepath = export_json({}, sample_result)
+            assert os.path.exists(filepath)
+        except Exception as e:
+            pytest.fail(f"export_json() кинув виняток з порожніми даними: {e}")
+
+    # Тест виняткових ситуацій 2 — РЕГРЕСІЙНИЙ
+    def test_excel_still_works_after_json_added(self, sample_result, tmp_path, monkeypatch):
+        """
+        РЕГРЕСІЙНИЙ ТЕСТ: перевіряємо що додавання JSON функції
+        не зламало існуючий Excel експорт.
+        """
+        import openpyxl
+        monkeypatch.setattr(
+            "app.ml.report.get",
+            lambda key, default=None: str(tmp_path) if key == "paths.reports_dir" else default
+        )
+        filepath = generate_report(SAMPLE_INPUT, sample_result)
+        assert filepath.endswith(".xlsx")
+        wb = openpyxl.load_workbook(filepath)
+        assert wb is not None
+        wb.close()
