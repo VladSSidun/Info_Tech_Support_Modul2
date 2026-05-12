@@ -1,5 +1,5 @@
-# main.py
-# Точка входу програми — запускає головне вікно
+# source venv/Scripts/activate
+# pytest tests/ -v
 
 import sys
 import os
